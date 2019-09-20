@@ -1,89 +1,137 @@
-from os.path import join, dirname
-import datetime
+''' Create a simple stocks correlation dashboard.
+
+Choose stocks to compare in the drop down widgets, and make selections
+on the plots to update the summary and histograms accordingly.
+
+.. note::
+    Running this example requires downloading sample data. See
+    the included `README`_ for more information.
+
+Use the ``bokeh serve`` command to run the example by executing:
+
+    bokeh serve stocks
+
+at your command prompt. Then navigate to the URL
+
+    http://localhost:5006/stocks
+
+.. _README: https://github.com/bokeh/bokeh/blob/master/examples/app/stocks/README.md
+
+'''
+try:
+    from functools import lru_cache
+except ImportError:
+    # Python 2 does stdlib does not have lru_cache so let's just
+    # create a dummy decorator to avoid crashing
+    print ("WARNING: Cache for this example is available on Python 3 only.")
+    def lru_cache():
+        def dec(f):
+            def _(*args, **kws):
+                return f(*args, **kws)
+            return _
+        return dec
+
+from os.path import dirname, join
 
 import pandas as pd
-from scipy.signal import savgol_filter
 
 from bokeh.io import curdoc
 from bokeh.layouts import row, column
-from bokeh.models import ColumnDataSource, DataRange1d, Select
-from bokeh.palettes import Blues4
+from bokeh.models import ColumnDataSource
+from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 
-STATISTICS = ['record_min_temp', 'actual_min_temp', 'average_min_temp', 'average_max_temp', 'actual_max_temp', 'record_max_temp']
+DEFAULT_TICKERS = ['IDM', 'POSTIDM', 'ALL']
 
-def get_dataset(src, name, distribution):
-    df = src[src.airport == name].copy()
-    del df['airport']
-    df['date'] = pd.to_datetime(df.date)
-    # timedelta here instead of pd.DateOffset to avoid pandas bug < 0.18 (Pandas issue #11925)
-    df['left'] = df.date - datetime.timedelta(days=0.5)
-    df['right'] = df.date + datetime.timedelta(days=0.5)
-    df = df.set_index(['date'])
-    df.sort_index(inplace=True)
-    if distribution == 'Smoothed':
-        window, order = 51, 3
-        for key in STATISTICS:
-            df[key] = savgol_filter(df[key], window, order)
+def nix(val, lst):
+    return [x for x in lst if x != val]
 
-    return ColumnDataSource(data=df)
+datadict = {'IDM':'dummyIDM.pkl','POSTIDM':'dummyIDM.pkl','ALL':'dummyPOSTIDM.pkl'}
+datafolder = './bokeh-app/data/'
+@lru_cache()
+def load_ticker(ticker):
+    datafile = datafolder + datadict[ticker]
+    return pd.read_pickle(datafile)
 
-def make_plot(source, title):
-    plot = figure(x_axis_type="datetime", plot_width=800, tools="", toolbar_location=None)
-    plot.title.text = title
+@lru_cache()
+def get_data(t1):
+    data = load_ticker(t1)
+    data = data.dropna()
+    print (data.columns)
+    print (data.shape[0])
+    return data
 
-    plot.quad(top='record_max_temp', bottom='record_min_temp', left='left', right='right',
-              color=Blues4[2], source=source, legend="Record")
-    plot.quad(top='average_max_temp', bottom='average_min_temp', left='left', right='right',
-              color=Blues4[1], source=source, legend="Average")
-    plot.quad(top='actual_max_temp', bottom='actual_min_temp', left='left', right='right',
-              color=Blues4[0], alpha=0.5, line_color="black", source=source, legend="Actual")
+# set up widgets
 
-    # fixed attributes
-    plot.xaxis.axis_label = None
-    plot.yaxis.axis_label = "Temperature (F)"
-    plot.axis.axis_label_text_font_style = "bold"
-    plot.x_range = DataRange1d(range_padding=0.0)
-    plot.grid.grid_line_alpha = 0.3
+stats = PreText(text='', width=500)
+ticker1 = Select(value='IDM', options=nix('IDM', DEFAULT_TICKERS))
 
-    return plot
+# set up plots
 
-def update_plot(attrname, old, new):
-    city = city_select.value
-    plot.title.text = "Weather data for " + cities[city]['title']
+source = ColumnDataSource(data=dict(x=[], y=[]))
+source_static = ColumnDataSource(data=dict(x=[], y=[]))
+tools = 'pan,wheel_zoom,xbox_select,reset'
 
-    src = get_dataset(df, cities[city]['airport'], distribution_select.value)
-    source.data.update(src.data)
+corr = figure(plot_width=350, plot_height=350,
+              tools='pan,wheel_zoom,box_select,reset')
+corr.circle('centerx', 'centery', size=2, source=source,
+            selection_color="orange", alpha=0.6, nonselection_alpha=0.1, selection_alpha=0.4)
 
-city = 'Austin'
-distribution = 'Discrete'
+# ts1 = figure(plot_width=900, plot_height=200, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+# ts1.line('date', 't1', source=source_static)
+# ts1.circle('date', 't1', size=1, source=source, color=None, selection_color="orange")
 
-cities = {
-    'Austin': {
-        'airport': 'AUS',
-        'title': 'Austin, TX',
-    },
-    'Boston': {
-        'airport': 'BOS',
-        'title': 'Boston, MA',
-    },
-    'Seattle': {
-        'airport': 'SEA',
-        'title': 'Seattle, WA',
-    }
-}
+# ts2 = figure(plot_width=900, plot_height=200, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+# ts2.x_range = ts1.x_range
+# ts2.line('date', 't2', source=source_static)
+# ts2.circle('date', 't2', size=1, source=source, color=None, selection_color="orange")
 
-city_select = Select(value=city, title='City', options=sorted(cities.keys()))
-distribution_select = Select(value=distribution, title='Distribution', options=['Discrete', 'Smoothed'])
+# set up callbacks
 
-df = pd.read_csv(join(dirname(__file__), 'data/2015_weather.csv'))
-source = get_dataset(df, cities[city]['airport'], distribution)
-plot = make_plot(source, "Weather data for " + cities[city]['title'])
+def ticker1_change(attrname, old, new):
+    ticker2.options = nix(new, DEFAULT_TICKERS)
+    update()
 
-city_select.on_change('value', update_plot)
-distribution_select.on_change('value', update_plot)
+def ticker2_change(attrname, old, new):
+    ticker1.options = nix(new, DEFAULT_TICKERS)
+    update()
 
-controls = column(city_select, distribution_select)
+def update(selected=None):
+    t1 = ticker1.value
 
-curdoc().add_root(row(plot, controls))
-curdoc().title = "Weather"
+    data = get_data(t1)
+    source.data = source.from_df(data[['centerx', 'centery']])
+    source_static.data = source.data
+
+    update_stats(data, t1)
+
+#    corr.title.text = '%s returns vs. %s returns' % (t1, t2)
+#    ts1.title.text, ts2.title.text = t1, t2
+
+def update_stats(data, t1):
+#    stats.text = str(data[[t1]].describe())
+    stats.text = str(data[["ene1","sigma"]].describe())
+
+ticker1.on_change('value', ticker1_change)
+
+def selection_change(attrname, old, new):
+    t1 = ticker1.value
+    data = get_data(t1)
+    selected = source.selected.indices
+    if selected:
+        data = data.iloc[selected, :]
+    update_stats(data, t1)
+
+source.selected.on_change('indices', selection_change)
+
+#set up layout
+widgets = column(ticker1, stats)
+main_row = row(corr, widgets)
+#series = column(ts1)
+layout = column(main_row)
+
+# initialize
+update()
+
+curdoc().add_root(layout)
+curdoc().title = "Stocks"
