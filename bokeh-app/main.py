@@ -41,12 +41,15 @@ from bokeh.models import ColumnDataSource
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot
+
+
 DATA_TICKERS = ['IDM', 'POSTIDM', 'ALL']
 
 def nix(val, lst):
     return [x for x in lst if x != val]
 
-data_dict = {'IDM':'dummyIDM.pkl','POSTIDM':'dummyIDM.pkl','ALL':'dummyPOSTIDM.pkl'}
+data_dict = {'IDM':'datalowEIDM.pkl','POSTIDM':'datalowEPostIDM.pkl','ALL':'datalowE.pkl'}
+#data_dict = {'IDM':'datalowE.pkl','POSTIDM':'datalowE.pkl','ALL':'datalowE.pkl'}
 datafolder = './bokeh-app/data/'
 @lru_cache()
 def load_ticker(ticker):
@@ -57,13 +60,15 @@ def load_ticker(ticker):
 def get_data(t1):
     data = load_ticker(t1)
     data = data.dropna()
+    
     return data
 
 # set up widgets
 
-stats = PreText(text='', width=500)
+#stats = PreText(text='', width=800, height=500)
+stats = PreText(text='',style={'font-size': '200%', 'color': 'blue'})
 
-ticker1 = Select(value='IDM', options=DATA_TICKERS)
+ticker1 = Select(value='IDM', options=DATA_TICKERS, width=400,height=80,default_size= 30, title='data set',background='lightblue')
 
 # set up plots
 source = ColumnDataSource(data=dict(x=[], y=[]))
@@ -71,27 +76,53 @@ source_static = ColumnDataSource(data=dict(x=[], y=[]))
 
 def update_stats(data, t1):
 #    stats.text = str(data[[t1]].describe())
-    stats.text = str(data[["ene1","sigma","ll"]].describe())
+    stats.text = str(data[["ene1","sigma","dll"]].describe())
 
 # initialization
 t1 = ticker1.value
 data = get_data(t1)
-source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
+source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
 source_static.data = source.data
 update_stats(data, t1)
 
     
-tools = 'pan,wheel_zoom,xbox_select,reset'
+tools = 'pan,wheel_zoom,xbox_select,reset,lasso_select'
+TOOLTIPS = """
+    <div>
+        <div> 
+            <img
+                src="@figure" height="400" alt="@figure" width="600"
+                style="float: left; margin: 0px 15px 15px 0px;"
+                border="2"
+            ></img>
+        </div>
+    </div>
+"""
 
-position = figure(plot_width=500, plot_height=500,
-                  tools='pan,wheel_zoom,box_select,reset')
-position.circle('centerx', 'centery', size=3, source=source,
-                selection_color="orange", alpha=0.8, nonselection_alpha=0.6, selection_alpha=0.8)
+position = figure(plot_width=600, plot_height=600,tooltips=TOOLTIPS,
+                  tools=tools)
+position.circle('centerx', 'centery', size=5, source=source,
+                selection_color="orange", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
 
-esigma = figure(plot_width=500, plot_height=500,
-                tools='pan,wheel_zoom,box_select,reset')
-esigma.circle('ene1', 'sigma', size=3, source=source,
-              selection_color="orange", alpha=0.8, nonselection_alpha=0.2, selection_alpha=0.4)
+position.xaxis.axis_label = "X [pixel]"
+position.yaxis.axis_label = "Y [1x100 pixel]"
+position.xaxis.axis_label_text_font_size = "20pt"
+position.yaxis.axis_label_text_font_size = "20pt"
+position.yaxis.major_label_text_font_size = "20pt"
+position.xaxis.major_label_text_font_size = "20pt"
+position.xaxis[0].ticker.desired_num_ticks = 3
+
+esigma = figure(plot_width=600, plot_height=600,tooltips=TOOLTIPS,
+                tools=tools)
+esigma.circle('ene1', 'sigma', size=5, source=source,
+              selection_color="orange", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
+esigma.xaxis.axis_label = "Energy [keV]"
+esigma.yaxis.axis_label = "depth [sigma]"
+esigma.xaxis.axis_label_text_font_size = "20pt"
+esigma.yaxis.axis_label_text_font_size = "20pt"
+esigma.yaxis.major_label_text_font_size = "20pt"
+esigma.xaxis.major_label_text_font_size = "20pt"
+esigma.xaxis[0].ticker.desired_num_ticks = 3
 ################
 ### definition of histos for the projections
 ################
@@ -181,7 +212,7 @@ def update(selected=None):
     t1 = ticker1.value
 
     data = get_data(t1)
-    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
+    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
     source_static.data = source.data
     
     update_stats(data, t1)
@@ -239,13 +270,15 @@ def selection_change(attrname, old, new):
 source.selected.on_change('indices', selection_change)
 
 #set up layout
-widgets = column(ticker1, stats)
-main_row = row(widgets,layout,positionlayout)
+#widgets = column(ticker1, stats)
+#main_row = row(widget,layout,positionlayout)
 #series = column(ts1)
-layout = column(main_row)
+#layout = column(main_row)
+plots = row(layout,positionlayout)
+layout = column(ticker1, plots, stats)
 
 # initialize
 #update()
 
 curdoc().add_root(layout)
-curdoc().title = "Stocks"
+curdoc().title = "low energy clusters"
