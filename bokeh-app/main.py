@@ -43,13 +43,13 @@ from bokeh.plotting import figure
 from bokeh.layouts import gridplot
 from bokeh.models import Circle
 
-DATA_TICKERS = ['IDM', 'POSTIDM', 'ALL','E < 0.5keV']
+DATA_TICKERS = ['IDM', 'POSTIDM', 'ALL','E < 0.5keV','E < 1keV','E < 6keV']
 
 def nix(val, lst):
     return [x for x in lst if x != val]
 
 #data_dict = {'IDM':'datalowEIDM.pkl','POSTIDM':'datalowEPostIDM.pkl','ALL':'datalowE.pkl'}
-data_dict = {'IDM':'selected_idm.pkl','POSTIDM':'selected_postidm.pkl','ALL':'selected.pkl','E < 0.5keV':'selected_05.pkl'}
+data_dict = {'IDM':'selected_idm.pkl','POSTIDM':'selected_postidm.pkl','ALL':'selected.pkl','E < 0.5keV':'selected_05.pkl','E < 1keV':'selected_1.pkl','E < 6keV':'selected_6.pkl'}
 datafolder = './bokeh-app/data/'
 @lru_cache()
 def load_ticker(ticker):
