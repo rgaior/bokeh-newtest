@@ -41,15 +41,15 @@ from bokeh.models import ColumnDataSource
 from bokeh.models.widgets import PreText, Select
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot
+from bokeh.models import Circle
 
-
-DATA_TICKERS = ['IDM', 'POSTIDM', 'ALL']
+DATA_TICKERS = ['IDM', 'POSTIDM', 'ALL','E < 0.5keV']
 
 def nix(val, lst):
     return [x for x in lst if x != val]
 
-data_dict = {'IDM':'datalowEIDM.pkl','POSTIDM':'datalowEPostIDM.pkl','ALL':'datalowE.pkl'}
-#data_dict = {'IDM':'datalowE.pkl','POSTIDM':'datalowE.pkl','ALL':'datalowE.pkl'}
+#data_dict = {'IDM':'datalowEIDM.pkl','POSTIDM':'datalowEPostIDM.pkl','ALL':'datalowE.pkl'}
+data_dict = {'IDM':'selected_idm.pkl','POSTIDM':'selected_postidm.pkl','ALL':'selected.pkl','E < 0.5keV':'selected_05.pkl'}
 datafolder = './bokeh-app/data/'
 @lru_cache()
 def load_ticker(ticker):
@@ -81,28 +81,30 @@ def update_stats(data, t1):
 # initialization
 t1 = ticker1.value
 data = get_data(t1)
-source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
+#source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
+source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
 source_static.data = source.data
 update_stats(data, t1)
 
     
-tools = 'pan,wheel_zoom,xbox_select,reset,lasso_select'
-TOOLTIPS = """
-    <div>
-        <div> 
-            <img
-                src="@figure" height="400" alt="@figure" width="600"
-                style="float: left; margin: 0px 15px 15px 0px;"
-                border="2"
-            ></img>
-        </div>
-    </div>
-"""
+#tools = 'pan,wheel_zoom,xbox_select,reset,lasso_select,box_zoom'
+tools = 'pan,wheel_zoom,box_select,reset,lasso_select,box_zoom,save'
+# TOOLTIPS = """
+#     <div>
+#         <div> 
+#             <img
+#                 src="@figure" height="400" alt="@figure" width="600"
+#                 style="float: left; margin: 0px 15px 15px 0px;"
+#                 border="2"
+#             ></img>
+#         </div>
+#     </div>
+#"""
 
-position = figure(plot_width=600, plot_height=600,tooltips=TOOLTIPS,
-                  tools=tools)
-position.circle('centerx', 'centery', size=5, source=source,
-                selection_color="orange", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
+position = figure(plot_width=600, plot_height=600,tools=tools)
+position.circle('centerx', 'centery', size=7, source=source,
+                selection_color="red", alpha=0.8, nonselection_alpha=0.4, selection_alpha=0.8)
+
 
 position.xaxis.axis_label = "X [pixel]"
 position.yaxis.axis_label = "Y [1x100 pixel]"
@@ -112,10 +114,9 @@ position.yaxis.major_label_text_font_size = "20pt"
 position.xaxis.major_label_text_font_size = "20pt"
 position.xaxis[0].ticker.desired_num_ticks = 3
 
-esigma = figure(plot_width=600, plot_height=600,tooltips=TOOLTIPS,
-                tools=tools)
-esigma.circle('ene1', 'sigma', size=5, source=source,
-              selection_color="orange", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
+esigma = figure(plot_width=600, plot_height=600,tools=tools)
+esigma.circle('ene1', 'sigma', size=7, source=source,
+              selection_color="red", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
 esigma.xaxis.axis_label = "Energy [keV]"
 esigma.yaxis.axis_label = "depth [sigma]"
 esigma.xaxis.axis_label_text_font_size = "20pt"
@@ -212,7 +213,8 @@ def update(selected=None):
     t1 = ticker1.value
 
     data = get_data(t1)
-    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
+    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
+#    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
     source_static.data = source.data
     
     update_stats(data, t1)
