@@ -82,7 +82,7 @@ def update_stats(data, t1):
 t1 = ticker1.value
 data = get_data(t1)
 #source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
-source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
+source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','datetime','EXTID']])
 source_static.data = source.data
 update_stats(data, t1)
 
@@ -124,6 +124,20 @@ esigma.yaxis.axis_label_text_font_size = "20pt"
 esigma.yaxis.major_label_text_font_size = "20pt"
 esigma.xaxis.major_label_text_font_size = "20pt"
 esigma.xaxis[0].ticker.desired_num_ticks = 3
+
+
+timeid = figure(plot_width=1200, plot_height=600,tools=tools,x_axis_type="datetime")
+timeid.circle('datetime', 'EXTID', size=7, source=source,
+              selection_color="red", alpha=0.8, nonselection_alpha=0.8, selection_alpha=0.8)
+timeid.xaxis.axis_label = "time [s]"
+timeid.yaxis.axis_label = "EXTID "
+timeid.xaxis.axis_label_text_font_size = "20pt"
+timeid.yaxis.axis_label_text_font_size = "20pt"
+timeid.yaxis.major_label_text_font_size = "20pt"
+timeid.xaxis.major_label_text_font_size = "20pt"
+timeid.xaxis[0].ticker.desired_num_ticks = 3
+
+
 ################
 ### definition of histos for the projections
 ################
@@ -213,7 +227,7 @@ def update(selected=None):
     t1 = ticker1.value
 
     data = get_data(t1)
-    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma']])
+    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','datetime','EXTID']])
 #    source.data = source.from_df(data[['centerx', 'centery','ene1','sigma','figure']])
     source_static.data = source.data
     
@@ -274,10 +288,10 @@ source.selected.on_change('indices', selection_change)
 #set up layout
 #widgets = column(ticker1, stats)
 #main_row = row(widget,layout,positionlayout)
-#series = column(ts1)
+time= column(timeid)
 #layout = column(main_row)
 plots = row(layout,positionlayout)
-layout = column(ticker1, plots, stats)
+layout = column(ticker1, plots, time, stats)
 
 # initialize
 #update()
